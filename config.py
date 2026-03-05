@@ -5,7 +5,7 @@ load_dotenv()
 
 # ── LLM backend ────────────────────────────────────────────────────────────────
 LLM_BACKEND          = os.getenv("LLM_BACKEND", "claude").lower()  # "claude" or "ollama"
-LLM_COOLDOWN_SECONDS = int(os.getenv("LLM_COOLDOWN_SECONDS", "30"))
+LLM_DEBOUNCE_SECONDS = float(os.getenv("LLM_DEBOUNCE_SECONDS", "1.0"))  # gather window before firing LLM call
 
 # Claude
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")

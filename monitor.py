@@ -44,7 +44,6 @@ class LLMStats:
     total_calls: int = 0
     suspicious_hits: int = 0
     last_call_ts: float = 0.0
-    cooldown_seconds: int = 30
 
 
 @dataclass
@@ -221,14 +220,8 @@ def _cameras_panel(left_width: int = 999) -> Panel:
 
 def _llm_panel() -> Panel:
     llm = stats.llm
-    now = time.monotonic()
-    since_last = now - llm.last_call_ts if llm.last_call_ts else None
+    since_last = time.monotonic() - llm.last_call_ts if llm.last_call_ts else None
     last_str = "never" if since_last is None else f"{int(since_last)}s ago"
-    if since_last is None:
-        cd_str = "—"
-    else:
-        remaining = max(0.0, llm.cooldown_seconds - since_last)
-        cd_str = f"{remaining:.0f}s" if remaining > 0 else "[green]ready[/]"
 
     table = Table(box=None, padding=(0, 1), show_header=False)
     table.add_column("Key", style="dim", width=18)
@@ -237,7 +230,6 @@ def _llm_panel() -> Panel:
     table.add_row("API calls", str(llm.total_calls))
     table.add_row("Suspicious hits", f"[red]{llm.suspicious_hits}[/]" if llm.suspicious_hits else "0")
     table.add_row("Last call", last_str)
-    table.add_row("Cooldown", cd_str)
 
     return Panel(table, title="[bold]LLM Analyzer", border_style="magenta")
 

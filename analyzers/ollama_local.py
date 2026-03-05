@@ -1,7 +1,6 @@
 import asyncio
 import base64
 import json
-import time
 
 import cv2
 import httpx
@@ -53,17 +52,10 @@ class OllamaAnalyzer:
         self,
         model: str = config.OLLAMA_MODEL,
         base_url: str = config.OLLAMA_URL,
-        cooldown_seconds: int = config.LLM_COOLDOWN_SECONDS,
     ):
         self._model = model
         self._base_url = base_url.rstrip("/")
-        self._cooldown = cooldown_seconds
-        self._last_call: float = 0
         monitor.stats.llm.model = model
-        monitor.stats.llm.cooldown_seconds = cooldown_seconds
-
-    def is_ready(self) -> bool:
-        return time.monotonic() - self._last_call >= self._cooldown
 
     async def analyze(
         self,
@@ -72,11 +64,8 @@ class OllamaAnalyzer:
         context: dict[str, np.ndarray] | None = None,
         history: list[dict] | None = None,
     ) -> dict:
-        if not self.is_ready():
-            return {"suspicious": False, "changed": False, "reason": "cooldown"}
-
-        self._last_call = time.monotonic()
-        monitor.stats.llm.last_call_ts = self._last_call
+        import time
+        monitor.stats.llm.last_call_ts = time.monotonic()
         monitor.stats.llm.total_calls += 1
         ctx_count = len(context) if context else 0
         monitor.log(

@@ -16,18 +16,94 @@ else:
     from analyzers.llm import LLMAnalyzer as Analyzer  # type: ignore[assignment]
 
 
+import time
+
 import numpy as np
 
-# Shared registry of the latest frame from each camera (asyncio single-threaded, no lock needed)
+# ── Shared state (asyncio single-threaded — no locks needed) ──────────────────
+
 _latest_frames: dict[str, np.ndarray] = {}
+_latest_motion_ts: dict[str, float] = {}
+
+# Cameras that detected motion since the last LLM call: camera_id → (score, frame)
+_motion_events: dict[str, tuple[int, np.ndarray]] = {}
+
+# The active debounce task (None, or a running/completed Task)
+_debounce_task: asyncio.Task | None = None
 
 
 def _context_frames(trigger_id: str) -> dict[str, np.ndarray]:
-    """Return up to LLM_CONTEXT_CAMERAS snapshots from cameras other than the trigger."""
+    """Return up to LLM_CONTEXT_CAMERAS snapshots from cameras other than the trigger,
+    prioritised by most recent motion."""
     others = {k: v for k, v in _latest_frames.items() if k != trigger_id}
-    keys = list(others)[:config.LLM_CONTEXT_CAMERAS]
+    sorted_keys = sorted(others, key=lambda k: _latest_motion_ts.get(k, 0.0), reverse=True)
+    keys = sorted_keys[:config.LLM_CONTEXT_CAMERAS]
     return {k: others[k] for k in keys}
 
+
+# ── Debounce ──────────────────────────────────────────────────────────────────
+
+def _schedule_debounce(analyzer, alerter) -> None:
+    """Start a debounce task if none is already running.  All cameras that detect
+    motion within LLM_DEBOUNCE_SECONDS of the first event are included in a single
+    LLM call — preventing duplicate queries for the same scene."""
+    global _debounce_task
+    if _debounce_task is None or _debounce_task.done():
+        _debounce_task = asyncio.create_task(_fire_debounced_llm(analyzer, alerter))
+
+
+async def _fire_debounced_llm(analyzer, alerter) -> None:
+    """Wait out the debounce window, then fire ONE LLM call with all cameras
+    that registered motion during that window."""
+    await asyncio.sleep(config.LLM_DEBOUNCE_SECONDS)
+
+    events = dict(_motion_events)
+    _motion_events.clear()
+    if not events:
+        return
+
+    # Pick trigger = camera with the highest motion score
+    trigger_id = max(events, key=lambda k: events[k][0])
+    trigger_frame = events[trigger_id][1]
+
+    history = db.get_recent(config.LLM_HISTORY_WINDOW)
+    ctx = _context_frames(trigger_id)
+    ctx_count = len(ctx)
+    monitor.log(
+        f"LLM call — trigger: {trigger_id}"
+        + (f" + {ctx_count} context cam(s)" if ctx_count else "")
+        + f", {len(history)} history record(s)",
+        "LLM",
+    )
+
+    result = await analyzer.analyze(trigger_frame, trigger_id, ctx, history)
+
+    suspicious = result.get("suspicious", False)
+    changed = result.get("changed", True)
+    reason = result.get("reason", "unknown")
+
+    db.record(trigger_id, suspicious, changed, reason)
+
+    if suspicious and changed:
+        save_frame(trigger_frame, trigger_id)
+        monitor.log(f"{trigger_id}: alert sent — {reason}", "ALERT")
+        await alerter.send(
+            f"⚠️ Security alert [{trigger_id}]: {reason}",
+            image=trigger_frame,
+            camera_id=trigger_id,
+            reason=reason,
+        )
+    elif suspicious:
+        monitor.log(f"{trigger_id}: suspicious but no change — suppressed", "LLM")
+
+    # Motion events that arrived while the LLM call was in-flight would have been
+    # blocked from creating a new debounce task (this task wasn't done yet).
+    # Kick off a fresh debounce now so they aren't silently dropped.
+    if _motion_events:
+        _schedule_debounce(analyzer, alerter)
+
+
+# ── Per-camera loop ───────────────────────────────────────────────────────────
 
 async def monitor_camera(
     stream: CameraStream,
@@ -36,7 +112,6 @@ async def monitor_camera(
     alerter: DiscordAlerter,
 ):
     cam_stats = monitor.stats.camera(stream.camera_id)
-    pending_frame = None  # latest motion frame captured during cooldown
 
     while True:
         frame = stream.get_frame()
@@ -52,45 +127,14 @@ async def monitor_camera(
         if score > config.MOTION_THRESHOLD:
             cam_stats.motion_events += 1
             cam_stats.last_motion = datetime.now().strftime("%H:%M:%S")
-            if analyzer.is_ready():
-                monitor.log(f"{stream.camera_id}: motion {score:,} px — sending to LLM", "MOTION")
-                pending_frame = None
-                history = db.get_recent(config.LLM_HISTORY_WINDOW)
-                result = await analyzer.analyze(frame, stream.camera_id, _context_frames(stream.camera_id), history)
-            else:
-                # Store latest frame so we can analyze it once cooldown lifts
-                pending_frame = frame
-        elif pending_frame is not None and analyzer.is_ready():
-            # Cooldown just expired; motion happened earlier — analyze the saved frame
-            monitor.log(f"{stream.camera_id}: analyzing pending motion frame", "MOTION")
-            frame_to_analyze = pending_frame
-            pending_frame = None
-            history = db.get_recent(config.LLM_HISTORY_WINDOW)
-            result = await analyzer.analyze(frame_to_analyze, stream.camera_id, _context_frames(stream.camera_id), history)
-        else:
-            await asyncio.sleep(config.MONITOR_LOOP_INTERVAL)
-            continue
-
-        suspicious = result.get("suspicious", False)
-        changed = result.get("changed", True)
-        reason = result.get("reason", "unknown")
-
-        db.record(stream.camera_id, suspicious, changed, reason)
-
-        if suspicious and changed:
-            save_frame(frame, stream.camera_id)
-            monitor.log(f"{stream.camera_id}: alert sent — {reason}", "ALERT")
-            await alerter.send(
-                f"⚠️ Security alert [{stream.camera_id}]: {reason}",
-                image=frame,
-                camera_id=stream.camera_id,
-                reason=reason,
-            )
-        elif suspicious:
-            monitor.log(f"{stream.camera_id}: suspicious but no change — suppressed", "LLM")
+            _latest_motion_ts[stream.camera_id] = time.monotonic()
+            _motion_events[stream.camera_id] = (score, frame)
+            _schedule_debounce(analyzer, alerter)
 
         await asyncio.sleep(config.MONITOR_LOOP_INTERVAL)
 
+
+# ── Entry point ───────────────────────────────────────────────────────────────
 
 async def main():
     if not config.CAMERA_URLS:
@@ -120,12 +164,13 @@ async def main():
     monitor.log(f"LLM backend: {config.LLM_BACKEND.upper()} — {monitor.stats.llm.model}", "INFO")
 
     alerter = DiscordAlerter()
+    analyzer = Analyzer()  # shared across all cameras
 
     tasks = [
         monitor_camera(
             stream=stream,
             detector=MotionDetector(threshold=config.MOTION_THRESHOLD),
-            analyzer=Analyzer(),
+            analyzer=analyzer,
             alerter=alerter,
         )
         for stream in streams.values()

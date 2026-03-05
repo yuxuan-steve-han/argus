@@ -1,7 +1,6 @@
 import asyncio
 import base64
 import json
-import time
 
 import anthropic
 import cv2
@@ -49,15 +48,9 @@ def _encode(frame: np.ndarray, quality: int) -> str:
 # ── Analyzer ──────────────────────────────────────────────────────────────────
 
 class LLMAnalyzer:
-    def __init__(self, cooldown_seconds: int = config.LLM_COOLDOWN_SECONDS):
+    def __init__(self):
         self._client = anthropic.Anthropic(api_key=config.ANTHROPIC_API_KEY)
-        self._cooldown = cooldown_seconds
-        self._last_call: float = 0
         monitor.stats.llm.model = config.CLAUDE_MODEL
-        monitor.stats.llm.cooldown_seconds = cooldown_seconds
-
-    def is_ready(self) -> bool:
-        return time.monotonic() - self._last_call >= self._cooldown
 
     async def analyze(
         self,
@@ -66,11 +59,8 @@ class LLMAnalyzer:
         context: dict[str, np.ndarray] | None = None,
         history: list[dict] | None = None,
     ) -> dict:
-        if not self.is_ready():
-            return {"suspicious": False, "changed": False, "reason": "cooldown"}
-
-        self._last_call = time.monotonic()
-        monitor.stats.llm.last_call_ts = self._last_call
+        import time
+        monitor.stats.llm.last_call_ts = time.monotonic()
         monitor.stats.llm.total_calls += 1
         ctx_count = len(context) if context else 0
         monitor.log(
