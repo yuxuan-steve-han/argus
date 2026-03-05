@@ -111,12 +111,14 @@ def log(message: str, level: str = "INFO"):
 
 _scroll_offset = 0   # 0 = pinned to newest; positive = scrolled up into history
 _scroll_lock = threading.Lock()
+_scroll_event = threading.Event()
 
 
 def _adjust_scroll(delta: int):
     global _scroll_offset
     with _scroll_lock:
         _scroll_offset = max(0, _scroll_offset + delta)
+    _scroll_event.set()  # wake the render loop immediately
 
 
 def _get_scroll() -> int:
@@ -373,10 +375,12 @@ def start():
     layout = _make_layout()
 
     def _run():
+        interval = 1.0 / refresh_rate
         with Live(layout, console=console, screen=True, refresh_per_second=refresh_rate):
             while True:
                 _update_layout(layout, console)
-                time.sleep(1.0 / refresh_rate)
+                _scroll_event.wait(timeout=interval)
+                _scroll_event.clear()
 
     threading.Thread(target=_keyboard_listener, daemon=True).start()
     threading.Thread(target=_run, daemon=True).start()
