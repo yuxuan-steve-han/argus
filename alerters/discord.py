@@ -31,6 +31,7 @@ class DiscordAlerter:
         try:
             resp = await client.post(config.DISCORD_WEBHOOK_URL, data=data, files=files)
             resp.raise_for_status()
+            monitor.log("Discord alert sent (with image)", "ALERT")
         except Exception as e:
             monitor.log(f"Discord webhook (image) failed: {e}", "ERROR")
             await self._send_message(client, content)
@@ -39,5 +40,6 @@ class DiscordAlerter:
         try:
             resp = await client.post(config.DISCORD_WEBHOOK_URL, json={"content": content})
             resp.raise_for_status()
+            monitor.log("Discord alert sent", "ALERT")
         except Exception as e:
             monitor.log(f"Discord webhook failed: {e}", "ERROR")

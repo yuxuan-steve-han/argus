@@ -3,9 +3,10 @@ import threading
 from typing import TYPE_CHECKING
 
 import cv2
-from flask import Flask, Response, render_template
+from flask import Flask, Response, jsonify, render_template
 
 import config
+import monitor
 
 if TYPE_CHECKING:
     from cameras.stream import CameraStream
@@ -44,6 +45,12 @@ def _mjpeg_generator(camera_id: str):
             b"--frame\r\n"
             b"Content-Type: image/jpeg\r\n\r\n" + buf.tobytes() + b"\r\n"
         )
+
+
+@app.route("/api/logs")
+def api_logs():
+    entries = monitor.stats.get_all_log()[-100:]  # last 100 lines
+    return jsonify([{"ts": ts, "level": level, "msg": msg} for ts, level, msg in entries])
 
 
 def start_in_background(port: int):

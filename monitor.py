@@ -11,6 +11,9 @@ Arrow keys ↑↓ scroll the log panel.
 """
 
 import atexit
+import logging
+import logging.handlers
+import os
 import sys
 import threading
 import time
@@ -102,9 +105,42 @@ class Stats:
 stats = Stats()
 
 
+# ── File logger (rotating) ────────────────────────────────────────────────────
+
+class _TruncatingFileHandler(logging.handlers.RotatingFileHandler):
+    """On rollover, truncate the file instead of keeping backups."""
+    def doRollover(self):
+        if self.stream:
+            self.stream.close()
+            self.stream = None
+        self.stream = open(self.baseFilename, "w", encoding=self.encoding)
+
+
+def _make_file_logger() -> logging.Logger | None:
+    import config as _config
+    if not _config.LOG_FILE:
+        return None
+    os.makedirs(os.path.dirname(_config.LOG_FILE) or ".", exist_ok=True)
+    logger = logging.getLogger("security")
+    logger.setLevel(logging.DEBUG)
+    handler = _TruncatingFileHandler(
+        _config.LOG_FILE,
+        maxBytes=_config.LOG_MAX_BYTES,
+        backupCount=0,
+        encoding="utf-8",
+    )
+    handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s", datefmt="%Y-%m-%d %H:%M:%S"))
+    logger.addHandler(handler)
+    return logger
+
+_file_logger: logging.Logger | None = _make_file_logger()
+
+
 def log(message: str, level: str = "INFO"):
     """Shortcut: monitor.log('msg', 'CAMERA')"""
     stats.log(message, level)
+    if _file_logger:
+        _file_logger.log(logging.getLevelName(level) if level in ("DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL") else logging.INFO, message)
 
 
 # ── Scroll state ──────────────────────────────────────────────────────────────

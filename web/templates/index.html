@@ -241,6 +241,57 @@
       text-decoration: none;
     }
 
+    /* ── Log panel ───────────────────────────────────────────── */
+    .log-section {
+      margin-top: 28px;
+    }
+
+    .log-section h2 {
+      font-size: 0.8rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-bottom: 10px;
+    }
+
+    .log-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 12px 14px;
+      height: 240px;
+      overflow-y: auto;
+      font-family: 'Courier New', monospace;
+      font-size: 0.75rem;
+      line-height: 1.6;
+      display: flex;
+      flex-direction: column-reverse; /* newest at bottom, auto-scroll */
+    }
+
+    .log-box .log-inner {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .log-line {
+      display: flex;
+      gap: 10px;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+
+    .log-ts   { color: var(--text-dim); flex-shrink: 0; }
+    .log-lvl  { flex-shrink: 0; width: 6ch; }
+    .log-msg  { color: var(--text-muted); }
+
+    .lvl-INFO   { color: var(--text-dim); }
+    .lvl-CAMERA { color: #22d3ee; }
+    .lvl-MOTION { color: var(--yellow); }
+    .lvl-LLM    { color: #c084fc; }
+    .lvl-ALERT  { color: var(--red); font-weight: 700; }
+    .lvl-ERROR  { color: var(--red); }
+
     /* ── Responsive ──────────────────────────────────────────── */
     @media (max-width: 560px) {
       .feeds { grid-template-columns: 1fr; }
@@ -305,12 +356,52 @@
     {% endfor %}
   </div>
   {% endif %}
+
+  <div class="log-section">
+    <h2>System Log</h2>
+    <div class="log-box" id="log-box">
+      <div class="log-inner" id="log-inner"></div>
+    </div>
+  </div>
 </main>
 
 <footer>
   Argus &mdash; AI-powered home security &nbsp;|&nbsp;
-  <a href="https://github.com/anthropics/anthropic-sdk-python" target="_blank">Powered by Claude</a>
 </footer>
 
+<script>
+  let lastCount = 0;
+
+  function levelClass(lvl) {
+    return 'lvl-' + lvl.trim();
+  }
+
+  async function fetchLogs() {
+    try {
+      const res = await fetch('/api/logs');
+      const entries = await res.json();
+      if (entries.length === lastCount) return;
+      lastCount = entries.length;
+
+      const inner = document.getElementById('log-inner');
+      inner.innerHTML = '';
+      for (const e of entries) {
+        const line = document.createElement('div');
+        line.className = 'log-line';
+        line.innerHTML =
+          `<span class="log-ts">${e.ts}</span>` +
+          `<span class="log-lvl ${levelClass(e.level)}">${e.level}</span>` +
+          `<span class="log-msg">${e.msg}</span>`;
+        inner.appendChild(line);
+      }
+      // Scroll to bottom (newest)
+      const box = document.getElementById('log-box');
+      box.scrollTop = box.scrollHeight;
+    } catch (_) {}
+  }
+
+  fetchLogs();
+  setInterval(fetchLogs, 2000);
+</script>
 </body>
 </html>
