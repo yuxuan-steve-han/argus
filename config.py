@@ -35,6 +35,10 @@ LLM_CONTEXT_CAMERAS = int(os.getenv("LLM_CONTEXT_CAMERAS", "3"))  # max other-ca
 DISCORD_WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL", "")
 DISCORD_TIMEOUT     = int(os.getenv("DISCORD_TIMEOUT", "15"))
 
+# ── Discord bot ────────────────────────────────────────────────────────────────
+DISCORD_BOT_TOKEN   = os.getenv("DISCORD_BOT_TOKEN", "")
+DISCORD_BOT_MAX_TOKENS = int(os.getenv("DISCORD_BOT_MAX_TOKENS", "1024"))
+
 # ── Database ─────────────────────────────────────────────────────────────────────
 DB_BACKEND          = os.getenv("DB_BACKEND", "sqlite")             # registered backend name in db.py
 DB_PATH             = os.getenv("DB_PATH", "logs/security.db")

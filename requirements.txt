@@ -5,3 +5,4 @@ httpx
 flask
 numpy
 rich
+discord.py

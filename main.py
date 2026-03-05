@@ -5,6 +5,7 @@ import config
 import db
 import monitor
 from alerters.discord import DiscordAlerter
+from bot import discord_bot
 from cameras.stream import CameraStream
 from detectors.motion import MotionDetector
 from storage import save_frame
@@ -175,6 +176,8 @@ async def main():
         )
         for stream in streams.values()
     ]
+
+    tasks.append(discord_bot.start())
 
     await asyncio.gather(*tasks)
 
