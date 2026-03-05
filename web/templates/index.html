@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Argus — Home Security</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0d0f14;
+      --surface:   #161920;
+      --surface2:  #1e2230;
+      --border:    #2a2f3d;
+      --accent:    #3b82f6;
+      --accent-dim:#1e3a5f;
+      --green:     #22c55e;
+      --red:       #ef4444;
+      --yellow:    #eab308;
+      --text:      #e2e8f0;
+      --text-dim:  #64748b;
+      --text-muted:#94a3b8;
+      --radius:    10px;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Header ─────────────────────────────────────────────── */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 24px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .logo svg {
+      color: var(--accent);
+    }
+
+    .logo h1 {
+      font-size: 1.2rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      color: var(--text);
+    }
+
+    .logo span {
+      font-size: 0.75rem;
+      color: var(--text-dim);
+      font-weight: 400;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .header-meta {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      font-size: 0.8rem;
+      color: var(--text-dim);
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 6px var(--green);
+      animation: pulse 2s infinite;
+      flex-shrink: 0;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.4; }
+    }
+
+    /* ── Main grid ───────────────────────────────────────────── */
+    main {
+      flex: 1;
+      padding: 24px;
+    }
+
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      height: 60vh;
+      color: var(--text-dim);
+    }
+
+    .empty-state svg {
+      opacity: 0.3;
+    }
+
+    .empty-state p {
+      font-size: 0.9rem;
+    }
+
+    /* ── Feed grid ───────────────────────────────────────────── */
+    .feeds {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(480px, 1fr));
+      gap: 20px;
+    }
+
+    .feed-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      transition: border-color 0.2s;
+    }
+
+    .feed-card:hover {
+      border-color: var(--accent);
+    }
+
+    .feed-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px;
+      background: var(--surface2);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .feed-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      font-family: 'Courier New', monospace;
+      color: var(--text-muted);
+      letter-spacing: 0.05em;
+    }
+
+    .cam-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 5px var(--green);
+      animation: pulse 2s infinite;
+    }
+
+    .feed-badge {
+      font-size: 0.7rem;
+      color: var(--text-dim);
+      background: var(--border);
+      padding: 2px 7px;
+      border-radius: 4px;
+      letter-spacing: 0.04em;
+    }
+
+    .feed-body {
+      position: relative;
+      background: #000;
+      line-height: 0;
+    }
+
+    .feed-body img {
+      width: 100%;
+      height: auto;
+      display: block;
+      object-fit: cover;
+    }
+
+    /* Loading shimmer while stream connects */
+    .feed-body::before {
+      content: '';
+      display: block;
+      padding-top: 56.25%; /* 16:9 */
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(90deg, #1a1d26 25%, #22263a 50%, #1a1d26 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+    }
+
+    .feed-body img { position: relative; z-index: 1; }
+
+    @keyframes shimmer {
+      0%   { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+
+    .feed-footer {
+      padding: 8px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.75rem;
+      color: var(--text-dim);
+      border-top: 1px solid var(--border);
+    }
+
+    .feed-footer .stream-url {
+      font-family: 'Courier New', monospace;
+      font-size: 0.7rem;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 70%;
+    }
+
+    /* ── Footer ──────────────────────────────────────────────── */
+    footer {
+      text-align: center;
+      padding: 12px;
+      font-size: 0.72rem;
+      color: var(--text-dim);
+      border-top: 1px solid var(--border);
+    }
+
+    footer a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    /* ── Responsive ──────────────────────────────────────────── */
+    @media (max-width: 560px) {
+      .feeds { grid-template-columns: 1fr; }
+      header { padding: 10px 16px; }
+      main   { padding: 16px; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <!-- Eye / security icon -->
+    <svg width="26" height="26" viewBox="0 0 24 24" fill="none"
+         stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+      <circle cx="12" cy="12" r="3"/>
+    </svg>
+    <div>
+      <h1>Argus</h1>
+      <span>Home Security</span>
+    </div>
+  </div>
+  <div class="header-meta">
+    <div class="dot"></div>
+    <span>{{ camera_ids | length }} camera{{ 's' if camera_ids | length != 1 else '' }} live</span>
+  </div>
+</header>
+
+<main>
+  {% if not camera_ids %}
+  <div class="empty-state">
+    <svg width="64" height="64" viewBox="0 0 24 24" fill="none"
+         stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M23 7l-7 5 7 5V7z"/>
+      <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+    </svg>
+    <p>No cameras connected yet.</p>
+    <p>Check your <code>CAMERA_URLS</code> in <code>.env</code>.</p>
+  </div>
+  {% else %}
+  <div class="feeds">
+    {% for camera_id in camera_ids %}
+    <div class="feed-card">
+      <div class="feed-header">
+        <div class="feed-title">
+          <div class="cam-dot"></div>
+          {{ camera_id }}
+        </div>
+        <span class="feed-badge">LIVE</span>
+      </div>
+      <div class="feed-body">
+        <img src="/feed/{{ camera_id }}"
+             alt="{{ camera_id }}"
+             loading="lazy">
+      </div>
+      <div class="feed-footer">
+        <span>/feed/{{ camera_id }}</span>
+        <span>MJPEG</span>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+</main>
+
+<footer>
+  Argus &mdash; AI-powered home security &nbsp;|&nbsp;
+  <a href="https://github.com/anthropics/anthropic-sdk-python" target="_blank">Powered by Claude</a>
+</footer>
+
+</body>
+</html>

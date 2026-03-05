@@ -1,44 +1,17 @@
+import os
 import threading
 from typing import TYPE_CHECKING
 
 import cv2
-from flask import Flask, Response, render_template_string
+from flask import Flask, Response, render_template
 
 import config
 
 if TYPE_CHECKING:
     from cameras.stream import CameraStream
 
-app = Flask(__name__)
+app = Flask(__name__, template_folder=os.path.join(os.path.dirname(__file__), "templates"))
 _streams: dict[str, "CameraStream"] = {}
-
-_INDEX_HTML = """
-<!DOCTYPE html>
-<html>
-<head>
-  <title>Home Security</title>
-  <style>
-    body { background: #111; color: #eee; font-family: monospace; margin: 0; padding: 16px; }
-    h1 { margin-bottom: 16px; }
-    .feeds { display: flex; flex-wrap: wrap; gap: 12px; }
-    .feed { display: flex; flex-direction: column; align-items: center; }
-    .feed span { margin-top: 6px; font-size: 12px; color: #aaa; }
-    img { border: 1px solid #333; max-width: 640px; width: 100%; }
-  </style>
-</head>
-<body>
-  <h1>Home Security</h1>
-  <div class="feeds">
-    {% for camera_id in camera_ids %}
-    <div class="feed">
-      <img src="/feed/{{ camera_id }}" alt="{{ camera_id }}">
-      <span>{{ camera_id }}</span>
-    </div>
-    {% endfor %}
-  </div>
-</body>
-</html>
-"""
 
 
 def register_streams(streams: dict[str, "CameraStream"]):
@@ -47,7 +20,7 @@ def register_streams(streams: dict[str, "CameraStream"]):
 
 @app.route("/")
 def index():
-    return render_template_string(_INDEX_HTML, camera_ids=list(_streams.keys()))
+    return render_template("index.html", camera_ids=list(_streams.keys()))
 
 
 @app.route("/feed/<camera_id>")
