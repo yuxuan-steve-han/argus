@@ -11,12 +11,9 @@ Arrow keys ↑↓ scroll the log panel.
 """
 
 import atexit
-import select
 import sys
-import termios
 import threading
 import time
-import tty
 from dataclasses import dataclass, field
 from datetime import datetime
 
@@ -310,6 +307,31 @@ def _keyboard_listener():
     """Daemon thread: reads arrow keys from stdin to scroll the log panel."""
     if not sys.stdin.isatty():
         return
+
+    if sys.platform == "win32":
+        _keyboard_listener_windows()
+    else:
+        _keyboard_listener_unix()
+
+
+def _keyboard_listener_windows():
+    import msvcrt
+    while True:
+        if msvcrt.kbhit():
+            ch = msvcrt.getch()
+            if ch == b"\xe0":  # extended key prefix (arrow keys)
+                ch2 = msvcrt.getch()
+                if ch2 == b"H":    # ↑
+                    _adjust_scroll(3)
+                elif ch2 == b"P":  # ↓
+                    _adjust_scroll(-3)
+        time.sleep(0.05)
+
+
+def _keyboard_listener_unix():
+    import select
+    import termios
+    import tty
 
     fd = sys.stdin.fileno()
     old_settings = termios.tcgetattr(fd)
