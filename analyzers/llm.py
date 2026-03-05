@@ -26,12 +26,14 @@ class LLMAnalyzer:
         monitor.stats.llm.model = config.CLAUDE_MODEL
         monitor.stats.llm.cooldown_seconds = cooldown_seconds
 
+    def is_ready(self) -> bool:
+        return time.monotonic() - self._last_call >= self._cooldown
+
     async def analyze(self, frame: np.ndarray) -> dict:
-        now = time.monotonic()
-        if now - self._last_call < self._cooldown:
+        if not self.is_ready():
             return {"suspicious": False, "reason": "cooldown"}
 
-        self._last_call = now
+        self._last_call = time.monotonic()
         monitor.stats.llm.last_call_ts = now
         monitor.stats.llm.total_calls += 1
         monitor.log(f"LLM call #{monitor.stats.llm.total_calls} — analyzing frame", "LLM")
