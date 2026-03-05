@@ -29,8 +29,8 @@ JPEG_QUALITY_STREAM   = int(os.getenv("JPEG_QUALITY_STREAM", "70"))    # web MJP
 JPEG_QUALITY_STORAGE  = int(os.getenv("JPEG_QUALITY_STORAGE", "90"))   # saved to disk
 
 # ── Alerts ──────────────────────────────────────────────────────────────────────
-TELEGRAM_BOT_TOKEN = os.environ["TELEGRAM_BOT_TOKEN"]
-TELEGRAM_CHAT_ID   = os.environ["TELEGRAM_CHAT_ID"]
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
+TELEGRAM_CHAT_ID   = os.getenv("TELEGRAM_CHAT_ID", "")
 TELEGRAM_TIMEOUT   = int(os.getenv("TELEGRAM_TIMEOUT", "15"))
 
 # ── Cameras & server ────────────────────────────────────────────────────────────

@@ -11,14 +11,20 @@ TELEGRAM_API = f"https://api.telegram.org/bot{config.TELEGRAM_BOT_TOKEN}"
 
 
 class TelegramAlerter:
+    def __init__(self):
+        self._enabled = bool(config.TELEGRAM_BOT_TOKEN and config.TELEGRAM_CHAT_ID)
+        if not self._enabled:
+            monitor.log("Telegram not configured — alerts will be logged only", "INFO")
+
     async def send(self, message: str, image: np.ndarray | None = None, camera_id: str = "", reason: str = ""):
+        monitor.stats.record_alert(camera_id, reason or message)
+        if not self._enabled:
+            return
         async with httpx.AsyncClient(timeout=config.TELEGRAM_TIMEOUT) as client:
             if image is not None:
                 await self._send_photo(client, message, image)
             else:
                 await self._send_message(client, message)
-
-        monitor.stats.record_alert(camera_id, reason or message)
 
     async def _send_photo(self, client: httpx.AsyncClient, caption: str, image: np.ndarray):
         _, buf = cv2.imencode(".jpg", image, [cv2.IMWRITE_JPEG_QUALITY, config.JPEG_QUALITY_ALERT])
