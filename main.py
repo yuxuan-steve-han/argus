@@ -3,7 +3,7 @@ from datetime import datetime
 
 import config
 import monitor
-from alerters.telegram import TelegramAlerter
+from alerters.discord import DiscordAlerter
 from cameras.stream import CameraStream
 from detectors.motion import MotionDetector
 from storage import save_frame
@@ -19,7 +19,7 @@ async def monitor_camera(
     stream: CameraStream,
     detector: MotionDetector,
     analyzer,
-    alerter: TelegramAlerter,
+    alerter: DiscordAlerter,
 ):
     cam_stats = monitor.stats.camera(stream.camera_id)
     pending_frame = None  # latest motion frame captured during cooldown
@@ -91,7 +91,7 @@ async def main():
     monitor.start()
     monitor.log(f"LLM backend: {config.LLM_BACKEND.upper()} — {monitor.stats.llm.model}", "INFO")
 
-    alerter = TelegramAlerter()
+    alerter = DiscordAlerter()
 
     tasks = [
         monitor_camera(

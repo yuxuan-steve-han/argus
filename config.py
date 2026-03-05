@@ -24,14 +24,13 @@ MOG2_VAR_THRESHOLD = int(os.getenv("MOG2_VAR_THRESHOLD", "50"))
 
 # ── Image quality (1–100) ───────────────────────────────────────────────────────
 JPEG_QUALITY_ANALYSIS = int(os.getenv("JPEG_QUALITY_ANALYSIS", "80"))  # sent to LLM
-JPEG_QUALITY_ALERT    = int(os.getenv("JPEG_QUALITY_ALERT", "85"))     # sent via Telegram
+JPEG_QUALITY_ALERT    = int(os.getenv("JPEG_QUALITY_ALERT", "85"))     # sent via Discord
 JPEG_QUALITY_STREAM   = int(os.getenv("JPEG_QUALITY_STREAM", "70"))    # web MJPEG stream
 JPEG_QUALITY_STORAGE  = int(os.getenv("JPEG_QUALITY_STORAGE", "90"))   # saved to disk
 
 # ── Alerts ──────────────────────────────────────────────────────────────────────
-TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
-TELEGRAM_CHAT_ID   = os.getenv("TELEGRAM_CHAT_ID", "")
-TELEGRAM_TIMEOUT   = int(os.getenv("TELEGRAM_TIMEOUT", "15"))
+DISCORD_WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL", "")
+DISCORD_TIMEOUT     = int(os.getenv("DISCORD_TIMEOUT", "15"))
 
 # ── Cameras & server ────────────────────────────────────────────────────────────
 CAMERA_URLS          = [url.strip() for url in os.getenv("CAMERA_URLS", "").split(",") if url.strip()]
