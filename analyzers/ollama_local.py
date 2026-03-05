@@ -41,7 +41,7 @@ class OllamaAnalyzer:
             return {"suspicious": False, "reason": "cooldown"}
 
         self._last_call = time.monotonic()
-        monitor.stats.llm.last_call_ts = now
+        monitor.stats.llm.last_call_ts = self._last_call
         monitor.stats.llm.total_calls += 1
         monitor.log(f"LLM call #{monitor.stats.llm.total_calls} — analyzing frame [{self._model}]", "LLM")
 

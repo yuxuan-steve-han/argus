@@ -34,6 +34,7 @@ class TelegramAlerter:
             resp = await client.post(f"{TELEGRAM_API}/sendPhoto", data=data, files=files)
             resp.raise_for_status()
         except Exception as e:
+            monitor.log(f"Telegram sendPhoto failed: {e}", "ERROR")
             await self._send_message(client, caption)
 
     async def _send_message(self, client: httpx.AsyncClient, text: str):
@@ -44,4 +45,4 @@ class TelegramAlerter:
             )
             resp.raise_for_status()
         except Exception as e:
-            pass
+            monitor.log(f"Telegram sendMessage failed: {e}", "ERROR")
