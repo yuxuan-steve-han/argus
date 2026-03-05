@@ -72,6 +72,7 @@ async def main():
     web_server.start_in_background(config.FLASK_PORT)
     monitor.log(f"Web UI started at {web_url}", "INFO")
 
+    monitor.stats.llm.model = config.OLLAMA_MODEL if config.LLM_BACKEND == "ollama" else config.CLAUDE_MODEL
     monitor.start()
     monitor.log(f"LLM backend: {config.LLM_BACKEND.upper()} — {monitor.stats.llm.model}", "INFO")
 
