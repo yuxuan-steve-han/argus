@@ -9,18 +9,24 @@ LLM_DEBOUNCE_SECONDS = float(os.getenv("LLM_DEBOUNCE_SECONDS", "1.0"))  # gather
 
 # Claude
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
-CLAUDE_MODEL      = os.getenv("CLAUDE_MODEL", "claude-sonnet-4-6")
+CLAUDE_MODEL      = os.getenv("CLAUDE_MODEL", "claude-haiku-4-5-20251001")
 CLAUDE_MAX_TOKENS = int(os.getenv("CLAUDE_MAX_TOKENS", "256"))
 
 # Ollama
 OLLAMA_URL     = os.getenv("OLLAMA_URL", "http://localhost:11434")
-OLLAMA_MODEL   = os.getenv("OLLAMA_MODEL", "qwen2.5vl:32b")
+OLLAMA_MODEL   = os.getenv("OLLAMA_MODEL", "qwen3-vl:8b")
 OLLAMA_TIMEOUT = int(os.getenv("OLLAMA_TIMEOUT", "60"))
 
 # ── Motion detection ────────────────────────────────────────────────────────────
 MOTION_THRESHOLD  = int(os.getenv("MOTION_THRESHOLD", "5000"))
 MOG2_HISTORY      = int(os.getenv("MOG2_HISTORY", "500"))
 MOG2_VAR_THRESHOLD = int(os.getenv("MOG2_VAR_THRESHOLD", "50"))
+
+# ── YOLO pre-filter ────────────────────────────────────────────────────────────
+YOLO_ENABLED    = os.getenv("YOLO_ENABLED", "true").lower() in ("1", "true", "yes")
+YOLO_MODEL      = os.getenv("YOLO_MODEL", "yolov8n.pt")  # nano model; fast on CPU
+YOLO_CONFIDENCE = float(os.getenv("YOLO_CONFIDENCE", "0.4"))
+YOLO_CLASSES    = os.getenv("YOLO_CLASSES", "person,car,truck,bus,motorcycle,bicycle,dog,cat").split(",")
 
 # ── Image quality (1–100) ───────────────────────────────────────────────────────
 JPEG_QUALITY_ANALYSIS = int(os.getenv("JPEG_QUALITY_ANALYSIS", "80"))  # trigger frame sent to LLM
@@ -38,6 +44,12 @@ DISCORD_TIMEOUT     = int(os.getenv("DISCORD_TIMEOUT", "15"))
 # ── Discord bot ────────────────────────────────────────────────────────────────
 DISCORD_BOT_TOKEN   = os.getenv("DISCORD_BOT_TOKEN", "")
 DISCORD_BOT_MAX_TOKENS = int(os.getenv("DISCORD_BOT_MAX_TOKENS", "1024"))
+
+# ── Home Assistant ─────────────────────────────────────────────────────────────
+HASS_URL        = os.getenv("HASS_URL", "").rstrip("/")          # e.g. http://homeassistant.local:8123
+HASS_TOKEN      = os.getenv("HASS_TOKEN", "")                    # Long-lived access token
+HASS_WEBHOOK_ID = os.getenv("HASS_WEBHOOK_ID", "")               # Webhook trigger ID (optional, alternative to REST)
+HASS_TIMEOUT    = int(os.getenv("HASS_TIMEOUT", "10"))
 
 # ── Database ─────────────────────────────────────────────────────────────────────
 DB_BACKEND          = os.getenv("DB_BACKEND", "sqlite")             # registered backend name in db.py

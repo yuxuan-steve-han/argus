@@ -49,6 +49,10 @@ def get_recent(window_seconds: int) -> list[dict]:
     return _get().get_recent(window_seconds)
 
 
+def get_alerts(limit: int = 50) -> list[dict]:
+    return _get().get_alerts(limit)
+
+
 def format_history(records: list[dict]) -> str:
     """Pure formatting — not backend-specific."""
     if not records:

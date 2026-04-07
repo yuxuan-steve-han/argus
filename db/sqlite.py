@@ -51,3 +51,16 @@ class SQLiteBackend(DBBackend):
             {"ts": r[0], "camera_id": r[1], "suspicious": bool(r[2]), "changed": bool(r[3]), "reason": r[4]}
             for r in rows
         ]
+
+    def get_alerts(self, limit: int = 50) -> list[dict]:
+        with self._lock:
+            with self._connect() as conn:
+                rows = conn.execute(
+                    "SELECT ts, camera_id, changed, reason "
+                    "FROM llm_calls WHERE suspicious = 1 ORDER BY ts DESC LIMIT ?",
+                    (limit,),
+                ).fetchall()
+        return [
+            {"ts": r[0], "camera_id": r[1], "changed": bool(r[2]), "reason": r[3]}
+            for r in rows
+        ]

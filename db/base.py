@@ -17,3 +17,11 @@ class DBBackend(ABC):
         Each dict has keys: ts (float), camera_id (str),
         suspicious (bool), changed (bool), reason (str).
         """
+
+    @abstractmethod
+    def get_alerts(self, limit: int = 50) -> list[dict]:
+        """Return the most recent records where suspicious=true, newest first.
+
+        Each dict has keys: ts (float), camera_id (str),
+        changed (bool), reason (str).
+        """

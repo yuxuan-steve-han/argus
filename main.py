@@ -5,11 +5,15 @@ import config
 import db
 import monitor
 from alerters.discord import DiscordAlerter
+from alerters.homeassistant import HomeAssistantAlerter
 from bot import discord_bot
 from cameras.stream import CameraStream
 from detectors.motion import MotionDetector
 from storage import save_frame
 from web import server as web_server
+
+if config.YOLO_ENABLED:
+    from detectors.yolo import YOLOFilter
 
 if config.LLM_BACKEND == "ollama":
     from analyzers.ollama_local import OllamaAnalyzer as Analyzer
@@ -18,8 +22,21 @@ else:
 
 
 import time
+from typing import Any
 
 import numpy as np
+
+
+class MultiAlerter:
+    """Fan-out alerter that dispatches to all configured backends."""
+
+    def __init__(self, *alerters: Any):
+        self._alerters = alerters
+
+    async def send(self, message: str, image: np.ndarray | None = None,
+                   camera_id: str = "", reason: str = ""):
+        for a in self._alerters:
+            await a.send(message, image=image, camera_id=camera_id, reason=reason)
 
 # ── Shared state (asyncio single-threaded — no locks needed) ──────────────────
 
@@ -111,8 +128,10 @@ async def monitor_camera(
     detector: MotionDetector,
     analyzer,
     alerter: DiscordAlerter,
+    yolo_filter=None,
 ):
     cam_stats = monitor.stats.camera(stream.camera_id)
+    loop = asyncio.get_running_loop()
 
     while True:
         frame = stream.get_frame()
@@ -129,6 +148,24 @@ async def monitor_camera(
             cam_stats.motion_events += 1
             cam_stats.last_motion = datetime.now().strftime("%H:%M:%S")
             _latest_motion_ts[stream.camera_id] = time.monotonic()
+
+            # YOLO pre-filter: only proceed if a relevant object is detected
+            if yolo_filter is not None:
+                detections = await loop.run_in_executor(
+                    None, yolo_filter.detect, frame
+                )
+                if not detections:
+                    await asyncio.sleep(config.MONITOR_LOOP_INTERVAL)
+                    continue
+                labels = ", ".join(
+                    f"{d['class_name']} ({d['confidence']:.0%})"
+                    for d in detections
+                )
+                monitor.log(
+                    f"{stream.camera_id}: YOLO hit — {labels}",
+                    "YOLO",
+                )
+
             _motion_events[stream.camera_id] = (score, frame)
             _schedule_debounce(analyzer, alerter)
 
@@ -164,8 +201,12 @@ async def main():
     monitor.start()
     monitor.log(f"LLM backend: {config.LLM_BACKEND.upper()} — {monitor.stats.llm.model}", "INFO")
 
-    alerter = DiscordAlerter()
+    alerter = MultiAlerter(DiscordAlerter(), HomeAssistantAlerter())
     analyzer = Analyzer()  # shared across all cameras
+
+    yolo_filter = None
+    if config.YOLO_ENABLED:
+        yolo_filter = YOLOFilter()  # shared across all cameras (stateless)
 
     tasks = [
         monitor_camera(
@@ -173,6 +214,7 @@ async def main():
             detector=MotionDetector(threshold=config.MOTION_THRESHOLD),
             analyzer=analyzer,
             alerter=alerter,
+            yolo_filter=yolo_filter,
         )
         for stream in streams.values()
     ]

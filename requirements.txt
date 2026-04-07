@@ -6,3 +6,4 @@ flask
 numpy
 rich
 discord.py
+ultralytics

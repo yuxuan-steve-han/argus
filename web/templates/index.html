@@ -292,11 +292,133 @@
     .lvl-ALERT  { color: var(--red); font-weight: 700; }
     .lvl-ERROR  { color: var(--red); }
 
+    /* ── Tabs ────────────────────────────────────────────────── */
+    .tab-bar {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 20px;
+    }
+
+    .tab-btn {
+      padding: 8px 18px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text-dim);
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .tab-btn:hover { border-color: var(--accent); color: var(--text); }
+    .tab-btn.active { background: var(--accent-dim); border-color: var(--accent); color: var(--text); }
+
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    /* ── Alert history table ─────────────────────────────────── */
+    .alert-table-wrap {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+
+    .alert-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.8rem;
+    }
+
+    .alert-table th {
+      text-align: left;
+      padding: 10px 14px;
+      background: var(--surface2);
+      color: var(--text-dim);
+      font-weight: 600;
+      text-transform: uppercase;
+      font-size: 0.7rem;
+      letter-spacing: 0.06em;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .alert-table td {
+      padding: 9px 14px;
+      border-bottom: 1px solid var(--border);
+      color: var(--text-muted);
+    }
+
+    .alert-table tr:last-child td { border-bottom: none; }
+    .alert-table tr:hover td { background: var(--surface2); }
+
+    .alert-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 0.7rem;
+      font-weight: 600;
+    }
+
+    .alert-badge.new    { background: rgba(239,68,68,0.15); color: var(--red); }
+    .alert-badge.repeat { background: rgba(234,179,8,0.15); color: var(--yellow); }
+
+    .alert-camera {
+      font-family: 'Courier New', monospace;
+      color: var(--accent);
+      font-weight: 600;
+    }
+
+    .alert-empty {
+      text-align: center;
+      padding: 48px 14px;
+      color: var(--text-dim);
+    }
+
+    .alert-count {
+      font-size: 0.75rem;
+      color: var(--text-dim);
+      margin-bottom: 12px;
+    }
+
+    /* ── Status cards (for HA status panel) ──────────────────── */
+    .status-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 14px;
+      margin-bottom: 24px;
+    }
+
+    .status-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+    }
+
+    .status-card .label {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-dim);
+      margin-bottom: 6px;
+    }
+
+    .status-card .value {
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .status-card .value.red { color: var(--red); }
+    .status-card .value.green { color: var(--green); }
+
     /* ── Responsive ──────────────────────────────────────────── */
     @media (max-width: 560px) {
       .feeds { grid-template-columns: 1fr; }
       header { padding: 10px 16px; }
       main   { padding: 16px; }
+      .tab-btn { padding: 6px 12px; font-size: 0.75rem; }
     }
   </style>
 </head>
@@ -322,45 +444,92 @@
 </header>
 
 <main>
-  {% if not camera_ids %}
-  <div class="empty-state">
-    <svg width="64" height="64" viewBox="0 0 24 24" fill="none"
-         stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M23 7l-7 5 7 5V7z"/>
-      <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
-    </svg>
-    <p>No cameras connected yet.</p>
-    <p>Check your <code>CAMERA_URLS</code> in <code>.env</code>.</p>
+  <div class="tab-bar">
+    <button class="tab-btn active" data-tab="tab-live">Live Feeds</button>
+    <button class="tab-btn" data-tab="tab-alerts">Alert History</button>
   </div>
-  {% else %}
-  <div class="feeds">
-    {% for camera_id in camera_ids %}
-    <div class="feed-card">
-      <div class="feed-header">
-        <div class="feed-title">
-          <div class="cam-dot"></div>
-          {{ camera_id }}
+
+  <!-- ── Live Feeds tab ──────────────────────────────────────── -->
+  <div id="tab-live" class="tab-content active">
+    {% if not camera_ids %}
+    <div class="empty-state">
+      <svg width="64" height="64" viewBox="0 0 24 24" fill="none"
+           stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M23 7l-7 5 7 5V7z"/>
+        <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+      </svg>
+      <p>No cameras connected yet.</p>
+      <p>Check your <code>CAMERA_URLS</code> in <code>.env</code>.</p>
+    </div>
+    {% else %}
+    <div class="feeds">
+      {% for camera_id in camera_ids %}
+      <div class="feed-card">
+        <div class="feed-header">
+          <div class="feed-title">
+            <div class="cam-dot"></div>
+            {{ camera_id }}
+          </div>
+          <span class="feed-badge">LIVE</span>
         </div>
-        <span class="feed-badge">LIVE</span>
+        <div class="feed-body">
+          <img src="/feed/{{ camera_id }}"
+               alt="{{ camera_id }}"
+               loading="lazy">
+        </div>
+        <div class="feed-footer">
+          <span>/feed/{{ camera_id }}</span>
+          <span>MJPEG</span>
+        </div>
       </div>
-      <div class="feed-body">
-        <img src="/feed/{{ camera_id }}"
-             alt="{{ camera_id }}"
-             loading="lazy">
-      </div>
-      <div class="feed-footer">
-        <span>/feed/{{ camera_id }}</span>
-        <span>MJPEG</span>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="log-section">
+      <h2>System Log</h2>
+      <div class="log-box" id="log-box">
+        <div class="log-inner" id="log-inner"></div>
       </div>
     </div>
-    {% endfor %}
   </div>
-  {% endif %}
 
-  <div class="log-section">
-    <h2>System Log</h2>
-    <div class="log-box" id="log-box">
-      <div class="log-inner" id="log-inner"></div>
+  <!-- ── Alert History tab ───────────────────────────────────── -->
+  <div id="tab-alerts" class="tab-content">
+    <div class="status-grid" id="status-grid">
+      <div class="status-card">
+        <div class="label">Total Alerts</div>
+        <div class="value red" id="stat-total">--</div>
+      </div>
+      <div class="status-card">
+        <div class="label">LLM Calls</div>
+        <div class="value" id="stat-llm-calls">--</div>
+      </div>
+      <div class="status-card">
+        <div class="label">Cameras Online</div>
+        <div class="value green" id="stat-cameras">--</div>
+      </div>
+      <div class="status-card">
+        <div class="label">Uptime</div>
+        <div class="value" id="stat-uptime">--</div>
+      </div>
+    </div>
+
+    <div class="alert-count" id="alert-count"></div>
+    <div class="alert-table-wrap">
+      <table class="alert-table">
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>Camera</th>
+            <th>Type</th>
+            <th>Reason</th>
+          </tr>
+        </thead>
+        <tbody id="alert-tbody">
+          <tr><td colspan="4" class="alert-empty">Loading alerts...</td></tr>
+        </tbody>
+      </table>
     </div>
   </div>
 </main>
@@ -370,6 +539,17 @@
 </footer>
 
 <script>
+  /* ── Tabs ─────────────────────────────────────────────────── */
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById(btn.dataset.tab).classList.add('active');
+    });
+  });
+
+  /* ── Logs (live feeds tab) ────────────────────────────────── */
   let lastCount = 0;
 
   function levelClass(lvl) {
@@ -394,14 +574,68 @@
           `<span class="log-msg">${e.msg}</span>`;
         inner.appendChild(line);
       }
-      // Scroll to bottom (newest)
       const box = document.getElementById('log-box');
       box.scrollTop = box.scrollHeight;
     } catch (_) {}
   }
 
+  /* ── Alert history (alerts tab) ───────────────────────────── */
+  function escapeHtml(s) {
+    const d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+  }
+
+  async function fetchAlerts() {
+    try {
+      const res = await fetch('/api/alerts?limit=100');
+      const alerts = await res.json();
+      const tbody = document.getElementById('alert-tbody');
+      const countEl = document.getElementById('alert-count');
+
+      if (!alerts.length) {
+        tbody.innerHTML = '<tr><td colspan="4" class="alert-empty">No alerts recorded yet.</td></tr>';
+        countEl.textContent = '';
+        return;
+      }
+
+      countEl.textContent = `Showing ${alerts.length} most recent alert${alerts.length !== 1 ? 's' : ''}`;
+      tbody.innerHTML = alerts.map(a => `<tr>
+        <td style="white-space:nowrap">${escapeHtml(a.time)}</td>
+        <td><span class="alert-camera">${escapeHtml(a.camera_id)}</span></td>
+        <td><span class="alert-badge ${a.changed ? 'new' : 'repeat'}">${a.changed ? 'NEW' : 'REPEAT'}</span></td>
+        <td>${escapeHtml(a.reason)}</td>
+      </tr>`).join('');
+    } catch (_) {}
+  }
+
+  /* ── Status cards ─────────────────────────────────────────── */
+  function fmtUptime(secs) {
+    const h = Math.floor(secs / 3600);
+    const m = Math.floor((secs % 3600) / 60);
+    const s = secs % 60;
+    return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+  }
+
+  async function fetchStatus() {
+    try {
+      const res = await fetch('/api/status');
+      const d = await res.json();
+      document.getElementById('stat-total').textContent = d.alerts.total_sent;
+      document.getElementById('stat-llm-calls').textContent = d.llm.total_calls;
+      const online = Object.values(d.cameras).filter(c => c.status === 'connected').length;
+      document.getElementById('stat-cameras').textContent = `${online} / ${Object.keys(d.cameras).length}`;
+      document.getElementById('stat-uptime').textContent = fmtUptime(d.uptime_seconds);
+    } catch (_) {}
+  }
+
+  /* ── Polling ──────────────────────────────────────────────── */
   fetchLogs();
+  fetchAlerts();
+  fetchStatus();
   setInterval(fetchLogs, 2000);
+  setInterval(fetchAlerts, 5000);
+  setInterval(fetchStatus, 3000);
 </script>
 </body>
 </html>
